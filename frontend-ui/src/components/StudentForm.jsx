@@ -1,270 +1,511 @@
-// src/components/StudentForm.jsx
-import React, { useEffect, useState } from "react";
-import toast from "react-hot-toast";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 
-/* helper */
-const emptyForm = {
-  first_name: "",
-  last_name: "",
-  gender: "M",
-  date_of_birth: "",
-  profile_image: null,
-  classroom: "",
-  teacher: "",
-  enrollment_date: "",
-  enrollment_history: "",
-  uploaded_documents: null,
-  evaluation_notes: "",
-  is_active: true,
-  allergies: "",
-  medical_notes: "",
-  guardian_name: "",
-  guardian_contact: "",
-  emergency_contact: "",
-};
+const StudentForm = () => {
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    gender: "",
+    profile_image: null,
+    classroom: "",
+    teacher: "",
+    enrollment_date: new Date().toISOString().split('T')[0],
+    enrollment_history: "",
+    uploaded_documents: null,
+    evaluation_notes: "",
+    is_active: true,
+    allergies: "",
+    medical_notes: "",
+    guardian_name: "",
+    guardian_contact: "",
+    emergency_contact: ""
+  });
 
-export default function StudentForm({ initial, onSaved, onCancel }) {
-  const isEdit = !!initial?.id;
-  const [form, setForm] = useState({ ...emptyForm, ...initial });
+  const [teachers, setTeachers] = useState([]);
   const [classrooms, setClassrooms] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [errors, setErrors] = useState({});
+  const [submitStatus, setSubmitStatus] = useState(null);
+  const [apiError, setApiError] = useState(null);
 
-  /* dropdown data -------------------------------------------------------- */
-  useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/classrooms/").then(r => r.json()).then(setClassrooms);
-    fetch("http://127.0.0.1:8000/api/staff/").then(r => r.json()).then(setStaff);
-  }, []);
-
-  /* helpers -------------------------------------------------------------- */
-  const up = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
-
-  const submit = e => {
-    e.preventDefault();
-
-    const fd = new FormData();
-    Object.entries(form).forEach(([k, v]) => {
-      if (v !== null && v !== undefined) fd.append(k, v);
-    });
-
-    const url = `http://127.0.0.1:8000/api/students/${isEdit ? initial.id + "/" : ""}`;
-    fetch(url, {
-      method: isEdit ? "PUT" : "POST",
-      body: fd,
-    })
-      .then(r => {
-        if (!r.ok) throw 0;
-        return r.json();
-      })
-      .then(() => {
-        toast.success(isEdit ? "Student updated" : "Student added");
-        onSaved();
-      })
-      .catch(() => toast.error("Save failed"));
+  // Function to fetch initial data
+  const fetchInitialData = async () => {
+    try {
+      setLoading(true);
+      setApiError(null);
+      
+      // Fetch teachers and classrooms
+      const teachersRes = await axios.get("http://127.0.0.1:8000/api/staff/");
+      const classroomsRes = await axios.get("http://127.0.0.1:8000/api/classrooms/");
+      
+      setTeachers(teachersRes.data);
+      setClassrooms(classroomsRes.data);
+      
+      setLoading(false);
+    } catch (err) {
+      console.error("Data fetch error:", err);
+      setApiError(`Failed to load data: ${err.message || "Server error"}`);
+      setLoading(false);
+    }
   };
 
-  const L = ({ label, children }) => (
-    <div>
-      <label className="block text-sm mb-1">{label}</label>
-      {children}
-    </div>
-  );
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
 
-  /* JSX ------------------------------------------------------------------ */
+  const handleChange = (e) => {
+    const { name, value, type, checked, files } = e.target;
+    
+    // Clear previous errors
+    if (errors[name]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+    
+    if (type === "checkbox") {
+      setFormData({ ...formData, [name]: checked });
+    } else if (type === "file") {
+      setFormData({ ...formData, [name]: files[0] });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Required fields validation
+    const requiredFields = [
+      'first_name', 'last_name', 'date_of_birth', 'gender', 
+      'classroom', 'teacher', 'enrollment_date',
+      'guardian_name', 'guardian_contact', 'emergency_contact'
+    ];
+    
+    requiredFields.forEach(field => {
+      if (!formData[field]) {
+        newErrors[field] = "This field is required";
+      }
+    });
+    
+    // Date validation
+    if (formData.date_of_birth > today) {
+      newErrors.date_of_birth = "Date of birth cannot be in the future";
+    }
+    
+    if (formData.enrollment_date > today) {
+      newErrors.enrollment_date = "Enrollment date cannot be in the future";
+    }
+    
+    // Age validation (minimum 1 month)
+    if (formData.date_of_birth) {
+      const birthDate = new Date(formData.date_of_birth);
+      const todayDate = new Date();
+      const ageInMonths = (todayDate.getFullYear() - birthDate.getFullYear()) * 12 + 
+                          (todayDate.getMonth() - birthDate.getMonth());
+      
+      if (ageInMonths < 1) {
+        newErrors.date_of_birth = "Student must be at least 1 month old";
+      }
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitStatus(null);
+    
+    if (!validateForm()) return;
+    
+    const data = new FormData();
+    Object.entries(formData).forEach(([key, val]) => {
+      if (val !== null && val !== undefined) {
+        data.append(key, val);
+      }
+    });
+
+    try {
+      setLoading(true);
+      await axios.post("http://127.0.0.1:8000/api/students/", data, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      
+      setSubmitStatus({ type: "success", message: "✅ Student added successfully!" });
+      
+      // Reset form after successful submission
+      setFormData({
+        first_name: "",
+        last_name: "",
+        date_of_birth: "",
+        gender: "",
+        profile_image: null,
+        classroom: "",
+        teacher: "",
+        enrollment_date: new Date().toISOString().split('T')[0],
+        enrollment_history: "",
+        uploaded_documents: null,
+        evaluation_notes: "",
+        is_active: true,
+        allergies: "",
+        medical_notes: "",
+        guardian_name: "",
+        guardian_contact: "",
+        emergency_contact: ""
+      });
+    } catch (err) {
+      console.error("Submission error:", err);
+      
+      let errorMsg = "Failed to submit form. Please try again.";
+      if (err.response) {
+        if (err.response.data) {
+          // Handle Django validation errors
+          if (typeof err.response.data === 'object') {
+            errorMsg = Object.entries(err.response.data)
+              .map(([key, errors]) => `${key}: ${errors.join(', ')}`)
+              .join('; ');
+          } else {
+            errorMsg = err.response.data.detail || err.response.data;
+          }
+        } else {
+          errorMsg = `Server error: ${err.response.status}`;
+        }
+      } else if (err.request) {
+        errorMsg = "No response from server. Check your connection.";
+      }
+      
+      setSubmitStatus({ type: "error", message: `❌ ${errorMsg}` });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // If we're still loading initial data
+  if (loading && !teachers.length && !classrooms.length) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[300px] p-8 bg-white rounded-lg shadow">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <p>Loading form data...</p>
+      </div>
+    );
+  }
+
+  // If there was an API error
+  if (apiError) {
+    return (
+      <div className="p-6 bg-white rounded-lg shadow text-center">
+        <div className="text-red-500 text-lg mb-4">{apiError}</div>
+        <p className="mb-4">Failed to load required data. Please check:</p>
+        <ul className="list-disc text-left mb-6 mx-auto max-w-md">
+          <li>Backend server is running</li>
+          <li>API endpoints are correct</li>
+          <li>CORS is properly configured</li>
+          <li>Network connection is working</li>
+        </ul>
+        <button 
+          onClick={fetchInitialData}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Retry Loading Data
+        </button>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={submit} className="space-y-6 overflow-y-auto max-h-[80vh] p-1 pr-2">
+    <form onSubmit={handleSubmit} className="p-6 bg-white rounded-lg shadow-lg max-w-4xl mx-auto">
+      <h2 className="text-2xl font-bold text-gray-800 mb-6 pb-2 border-b">Add Student</h2>
+      
+      {submitStatus && (
+        <div className={`mb-6 p-4 rounded ${
+          submitStatus.type === "success" 
+            ? "bg-green-100 text-green-700" 
+            : "bg-red-100 text-red-700"
+        }`}>
+          {submitStatus.message}
+        </div>
+      )}
+      
+      {/* Personal Information */}
+      <fieldset className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <legend className="px-2 font-bold text-lg text-gray-700">Personal Information</legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">First Name *</label>
+            <input 
+              name="first_name" 
+              value={formData.first_name} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.first_name ? 'border-red-500' : 'border-gray-300'}`} 
+              placeholder="Enter first name"
+            />
+            {errors.first_name && <p className="text-red-500 text-sm mt-1">{errors.first_name}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Last Name *</label>
+            <input 
+              name="last_name" 
+              value={formData.last_name} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.last_name ? 'border-red-500' : 'border-gray-300'}`} 
+              placeholder="Enter last name"
+            />
+            {errors.last_name && <p className="text-red-500 text-sm mt-1">{errors.last_name}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Date of Birth *</label>
+            <input 
+              type="date" 
+              name="date_of_birth" 
+              value={formData.date_of_birth} 
+              max={new Date().toISOString().split('T')[0]}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.date_of_birth ? 'border-red-500' : 'border-gray-300'}`} 
+            />
+            {errors.date_of_birth && <p className="text-red-500 text-sm mt-1">{errors.date_of_birth}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Gender *</label>
+            <select 
+              name="gender" 
+              value={formData.gender} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.gender ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">-- Select --</option>
+              <option value="M">Male</option>
+              <option value="F">Female</option>
+              <option value="O">Other</option>
+            </select>
+            {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender}</p>}
+          </div>
+          
+          <div className="md:col-span-2">
+            <label className="block mb-1 font-medium">Profile Image</label>
+            <div className="flex items-center">
+              <input 
+                type="file" 
+                accept="image/*" 
+                name="profile_image" 
+                onChange={handleChange} 
+                className="w-full p-1"
+              />
+              {formData.profile_image && (
+                <span className="ml-3 text-sm text-gray-600">
+                  {formData.profile_image.name}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </fieldset>
 
-      {/* --- personal ----------------------------------------------------- */}
-      <div className="grid grid-cols-2 gap-4">
-        <L label="First name">
-          <input
-            autoFocus
-            value={form.first_name}
-            onChange={e => up("first_name", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
+      {/* Guardian Information */}
+      <fieldset className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <legend className="px-2 font-bold text-lg text-gray-700">Guardian Information</legend>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">Guardian Name *</label>
+            <input 
+              name="guardian_name" 
+              value={formData.guardian_name} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.guardian_name ? 'border-red-500' : 'border-gray-300'}`} 
+              placeholder="Full name"
+            />
+            {errors.guardian_name && <p className="text-red-500 text-sm mt-1">{errors.guardian_name}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Guardian Contact *</label>
+            <input 
+              name="guardian_contact" 
+              value={formData.guardian_contact} 
+              onChange={handleChange}
+              placeholder="Phone number"
+              className={`w-full p-2 border rounded ${errors.guardian_contact ? 'border-red-500' : 'border-gray-300'}`} 
+            />
+            {errors.guardian_contact && <p className="text-red-500 text-sm mt-1">{errors.guardian_contact}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Emergency Contact *</label>
+            <input 
+              name="emergency_contact" 
+              value={formData.emergency_contact} 
+              onChange={handleChange}
+              placeholder="Phone number"
+              className={`w-full p-2 border rounded ${errors.emergency_contact ? 'border-red-500' : 'border-gray-300'}`} 
+            />
+            {errors.emergency_contact && <p className="text-red-500 text-sm mt-1">{errors.emergency_contact}</p>}
+          </div>
+        </div>
+      </fieldset>
 
-        <L label="Last name">
-          <input
-            value={form.last_name}
-            onChange={e => up("last_name", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-      </div>
+      {/* Academic Information */}
+      <fieldset className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <legend className="px-2 font-bold text-lg text-gray-700">Academic Information</legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">Classroom *</label>
+            <select 
+              name="classroom" 
+              value={formData.classroom} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.classroom ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">-- Select Classroom --</option>
+              {classrooms.map(cls => (
+                <option key={cls.id} value={cls.id}>
+                  {cls.name} ({cls.grade_level})
+                </option>
+              ))}
+            </select>
+            {errors.classroom && <p className="text-red-500 text-sm mt-1">{errors.classroom}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Teacher *</label>
+            <select 
+              name="teacher" 
+              value={formData.teacher} 
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.teacher ? 'border-red-500' : 'border-gray-300'}`}
+            >
+              <option value="">-- Select Teacher --</option>
+              {teachers.map(t => (
+                <option key={t.id} value={t.id}>
+                  {t.first_name} {t.last_name}
+                </option>
+              ))}
+            </select>
+            {errors.teacher && <p className="text-red-500 text-sm mt-1">{errors.teacher}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Enrollment Date *</label>
+            <input 
+              type="date" 
+              name="enrollment_date" 
+              value={formData.enrollment_date} 
+              max={new Date().toISOString().split('T')[0]}
+              onChange={handleChange}
+              className={`w-full p-2 border rounded ${errors.enrollment_date ? 'border-red-500' : 'border-gray-300'}`} 
+            />
+            {errors.enrollment_date && <p className="text-red-500 text-sm mt-1">{errors.enrollment_date}</p>}
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Enrollment History</label>
+            <textarea 
+              name="enrollment_history" 
+              value={formData.enrollment_history} 
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded" 
+              placeholder="Previous classrooms and years"
+              rows="3"
+            />
+          </div>
+        </div>
+      </fieldset>
 
-      <div className="grid grid-cols-3 gap-4">
-        <L label="Gender">
-          <select
-            value={form.gender}
-            onChange={e => up("gender", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          >
-            <option value="M">Male</option>
-            <option value="F">Female</option>
-            <option value="O">Other</option>
-          </select>
-        </L>
+      {/* Medical Information */}
+      <fieldset className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <legend className="px-2 font-bold text-lg text-gray-700">Medical Information</legend>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">Allergies</label>
+            <input 
+              name="allergies" 
+              value={formData.allergies} 
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded" 
+              placeholder="List any allergies"
+            />
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Medical Notes</label>
+            <textarea 
+              name="medical_notes" 
+              value={formData.medical_notes} 
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded" 
+              placeholder="Important medical information"
+              rows="3"
+            />
+          </div>
+        </div>
+      </fieldset>
 
-        <L label="Date of birth">
-          <input
-            type="date"
-            value={form.date_of_birth}
-            onChange={e => up("date_of_birth", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
+      {/* Documents & Evaluation */}
+      <fieldset className="mb-8 p-4 border rounded-lg bg-gray-50">
+        <legend className="px-2 font-bold text-lg text-gray-700">Documents & Evaluation</legend>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block mb-1 font-medium">Upload Documents</label>
+            <div className="flex items-center">
+              <input 
+                type="file" 
+                name="uploaded_documents" 
+                onChange={handleChange} 
+                className="w-full p-1"
+              />
+              {formData.uploaded_documents && (
+                <span className="ml-3 text-sm text-gray-600">
+                  {formData.uploaded_documents.name}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div>
+            <label className="block mb-1 font-medium">Evaluation Notes</label>
+            <textarea 
+              name="evaluation_notes" 
+              value={formData.evaluation_notes} 
+              onChange={handleChange}
+              className="w-full p-2 border border-gray-300 rounded" 
+              placeholder="Observations and assessments"
+              rows="3"
+            />
+          </div>
+        </div>
+      </fieldset>
 
-        <L label="Profile image">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => up("profile_image", e.target.files[0] || null)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-      </div>
-
-      {/* --- academic ----------------------------------------------------- */}
-      <div className="grid grid-cols-2 gap-4">
-        <L label="Classroom">
-          <select
-            value={form.classroom || ""}
-            onChange={e => up("classroom", e.target.value || null)}
-            className="w-full border rounded px-3 py-1"
-          >
-            <option value="">—</option>
-            {classrooms.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </L>
-
-        <L label="Teacher">
-          <select
-            value={form.teacher || ""}
-            onChange={e => up("teacher", e.target.value || null)}
-            className="w-full border rounded px-3 py-1"
-          >
-            <option value="">—</option>
-            {staff.map(t => (
-              <option key={t.id} value={t.id}>{t.full_name}</option>
-            ))}
-          </select>
-        </L>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <L label="Enrollment date">
-          <input
-            type="date"
-            value={form.enrollment_date}
-            onChange={e => up("enrollment_date", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-
-        <L label="Enrollment history">
-          <input
-            value={form.enrollment_history}
-            onChange={e => up("enrollment_history", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-            placeholder="Infant 2022 → Toddler 2023"
-          />
-        </L>
-      </div>
-
-      {/* --- docs & evaluation ------------------------------------------- */}
-      <L label="Upload documents">
-        <input
-          type="file"
-          multiple
-          onChange={e => up("uploaded_documents", e.target.files)}
-          className="w-full border rounded px-3 py-1"
+      {/* Status */}
+      <div className="flex items-center mb-6">
+        <input 
+          type="checkbox" 
+          name="is_active" 
+          checked={formData.is_active} 
+          onChange={handleChange} 
+          className="mr-2 h-5 w-5"
         />
-      </L>
-
-      <L label="Evaluation notes">
-        <textarea
-          rows={2}
-          value={form.evaluation_notes}
-          onChange={e => up("evaluation_notes", e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-      </L>
-
-      {/* --- health ------------------------------------------------------- */}
-      <div className="grid grid-cols-2 gap-4">
-        <L label="Allergies">
-          <input
-            value={form.allergies}
-            onChange={e => up("allergies", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-
-        <L label="Medical notes">
-          <input
-            value={form.medical_notes}
-            onChange={e => up("medical_notes", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
+        <label className="font-medium">Active Student</label>
       </div>
 
-      {/* --- guardian ----------------------------------------------------- */}
-      <div className="grid grid-cols-3 gap-4">
-        <L label="Guardian name">
-          <input
-            value={form.guardian_name}
-            onChange={e => up("guardian_name", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-
-        <L label="Guardian contact">
-          <input
-            value={form.guardian_contact}
-            onChange={e => up("guardian_contact", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-
-        <L label="Emergency contact">
-          <input
-            value={form.emergency_contact}
-            onChange={e => up("emergency_contact", e.target.value)}
-            className="w-full border rounded px-3 py-1"
-          />
-        </L>
-      </div>
-
-      {/* --- status ------------------------------------------------------- */}
-      <L label="Active">
-        <input
-          type="checkbox"
-          checked={form.is_active}
-          onChange={e => up("is_active", e.target.checked)}
-        />
-      </L>
-
-      {/* --- buttons ------------------------------------------------------ */}
-      <div className="flex gap-2 pt-2">
-        <button
-          type="submit"
-          className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-        >
-          {isEdit ? "Update" : "Add"}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 border rounded py-2"
-        >
-          Cancel
-        </button>
-      </div>
+      <button 
+        type="submit" 
+        disabled={loading}
+        className={`w-full py-3 px-4 rounded-md text-white font-medium ${
+          loading 
+            ? 'bg-gray-400 cursor-not-allowed' 
+            : 'bg-blue-600 hover:bg-blue-700'
+        }`}
+      >
+        {loading ? "Processing..." : "Register Student"}
+      </button>
     </form>
   );
-}
+};
 
+export default StudentForm;
