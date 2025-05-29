@@ -1,113 +1,105 @@
-import React, { useMemo, useState } from "react";
-import clsx from "classnames";
-import exportToCSV from "../utils/exportCSV";
+// src/components/DataTable.jsx
+import { useState, useMemo } from "react";
+import * as XLSX from "xlsx";
 
-export default function DataTable({ rows, columns }) {
-  const [search, setSearch]   = useState("");
-  const [sortKey, setSortKey] = useState(columns[0].key);
-  const [sortAsc, setSortAsc] = useState(true);
-  const [page, setPage]       = useState(1);
-  const perPage = 10;
+/** col = { key, label, render? } */
+export default function DataTable({ columns, rows, onBulkDelete }) {
+  /* search + sort */
+  const [query, setQuery]     = useState("");
+  const [sortKey, setSortKey] = useState(null);
+  const [asc, setAsc]         = useState(true);
 
-  // filter
-  const filtered = useMemo(() =>
-    rows.filter(r =>
-      Object.values(r).join(" ").toLowerCase().includes(search.toLowerCase())
-    ), [rows, search]);
+  /* selection */
+  const [sel, setSel] = useState([]);              // ids array
 
-  // sort
-  const sorted = useMemo(() => {
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      const vA = a[sortKey] ?? "", vB = b[sortKey] ?? "";
-      if (vA === vB) return 0;
-      return (vA > vB ? 1 : -1) * (sortAsc ? 1 : -1);
-    });
-    return arr;
-  }, [filtered, sortKey, sortAsc]);
+  /* filter + sort result */
+  const data = useMemo(() => {
+    let out = rows;
+    if (query)
+      out = out.filter(r =>
+        JSON.stringify(r).toLowerCase().includes(query.toLowerCase()));
+    if (sortKey)
+      out = [...out].sort((a, b) =>
+        asc ? a[sortKey] > b[sortKey] ? 1 : -1
+            : a[sortKey] < b[sortKey] ? 1 : -1);
+    return out;
+  }, [rows, query, sortKey, asc]);
 
-  // pagination
-  const pageCount = Math.max(1, Math.ceil(sorted.length / perPage));
-  const current   = sorted.slice((page - 1) * perPage, page * perPage);
-  const goto = p => setPage(Math.min(Math.max(1, p), pageCount));
+  /* bulk export */
+  const exportCSV = () => {
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(
+      data.map(r => Object.fromEntries(columns.map(c => [c.label, r[c.key]])))
+    );
+    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+    XLSX.writeFile(wb, "export.xlsx");
+  };
 
+  const toggleSel = id =>
+    setSel(s => s.includes(id) ? s.filter(i => i !== id) : [...s, id]);
+
+  /* UI */
   return (
-    <div className="space-y-3">
-      {/* top bar */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+    <>
+      {/* toolbar */}
+      <div className="flex items-center justify-between mb-2">
         <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
+          value={query}
+          onChange={e => setQuery(e.target.value)}
           placeholder="Search…"
-          className="w-full md:w-60 border rounded px-3 py-1 text-sm"
+          className="border px-2 py-1 rounded text-sm"
         />
-        <button
-          onClick={() => exportToCSV(sorted, columns)}
-          className="px-3 py-1 border rounded text-sm bg-blue-600 text-white hover:bg-blue-700"
-        >
-          Download CSV
-        </button>
+
+        <div className="space-x-2">
+          <button
+            disabled={!sel.length}
+            onClick={() => onBulkDelete(sel)}
+            className={`px-3 py-1 rounded text-sm 
+                        ${sel.length ? "bg-red-600 text-white" : "bg-gray-300 text-gray-500"}`}>
+            Delete&nbsp;({sel.length})
+          </button>
+          <button onClick={exportCSV}
+                  className="px-3 py-1 bg-green-600 text-white rounded text-sm">
+            Export&nbsp;CSV
+          </button>
+        </div>
       </div>
 
       {/* table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full bg-white dark:bg-gray-800 border rounded-xl text-sm">
-          <thead className="bg-gray-100 dark:bg-gray-700">
+        <table className="min-w-full bg-white border rounded-xl text-sm">
+          <thead className="bg-gray-100">
             <tr>
+              <th className="px-3"><input type="checkbox"
+                    checked={sel.length === data.length && data.length}
+                    onChange={e => setSel(e.target.checked ? data.map(r=>r.id) : [])}/></th>
               {columns.map(col => (
-                <th
-                  key={col.key}
-                  onClick={() => {
-                    if (sortKey === col.key) setSortAsc(!sortAsc);
-                    else { setSortKey(col.key); setSortAsc(true); }
-                  }}
-                  className="px-4 py-2 text-left cursor-pointer select-none"
-                >
-                  {col.label}
-                  {sortKey === col.key && (sortAsc ? " ▲" : " ▼")}
+                <th key={col.key}
+                    className="px-3 py-2 text-left cursor-pointer select-none"
+                    onClick={() => { setAsc(sortKey === col.key ? !asc : true); setSortKey(col.key);} }>
+                  {col.label}{sortKey===col.key && (asc? " ▲":" ▼")}
                 </th>
               ))}
+              <th className="px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            {current.map(row => (
-              <tr key={row.id || Math.random()} className="border-t hover:bg-gray-50 dark:hover:bg-gray-700">
+            {data.map(r => (
+              <tr key={r.id} className={r.__rowClass || ""}>
+                <td className="px-3"><input type="checkbox"
+                      checked={sel.includes(r.id)} onChange={()=>toggleSel(r.id)}/></td>
                 {columns.map(col => (
-                  <td key={col.key} className="px-4 py-2">
-                    {row[col.key]}
+                  <td key={col.key} className="px-3 py-2">
+                    {col.render ? col.render(r) : r[col.key]}
                   </td>
                 ))}
+                {/* caller can inject Edit/Delete buttons via render */}
               </tr>
             ))}
-            {current.length === 0 && (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-6 text-center text-gray-400">
-                  No results
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
       </div>
-
-      {/* pager */}
-      {pageCount > 1 && (
-        <div className="flex gap-2 justify-center text-sm">
-          <button onClick={() => goto(page - 1)} disabled={page === 1} className="px-2 py-1 border rounded disabled:opacity-40">←</button>
-          {Array.from({ length: pageCount }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => goto(i + 1)}
-              className={clsx("px-2 py-1 border rounded w-8",
-                page === i + 1 ? "bg-blue-600 text-white" : "hover:bg-gray-100 dark:hover:bg-gray-700")}
-            >
-              {i + 1}
-            </button>
-          ))}
-          <button onClick={() => goto(page + 1)} disabled={page === pageCount} className="px-2 py-1 border rounded disabled:opacity-40">→</button>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 

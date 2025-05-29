@@ -1,73 +1,99 @@
 import React, { useEffect, useState } from "react";
 import toast, { Toaster } from "react-hot-toast";
-import DataTable from "../components/DataTable";
-import Drawer from "../components/Drawer";
-import PaymentForm from "../components/PaymentForm";
+
+import DataTable    from "../components/DataTable";
+import Drawer       from "../components/Drawer";
+import PaymentForm  from "../components/PaymentForm";
 
 export default function Payments() {
-  const [rows, setRows]   = useState([]);
-  const [loading, setLd]  = useState(true);
+  /* state */
+  const [rows,   setRows] = useState([]);
+  const [load,   setLd]   = useState(true);
   const [drawer, setDr]   = useState(false);
-  const [editRow, setEdt] = useState(null);
+  const [edit,   setEdt]  = useState(null);
 
-  const load = () => {
+  /* fetch list */
+  const fetchRows = () => {
     setLd(true);
     fetch("http://127.0.0.1:8000/api/payments/")
       .then(r => r.json())
       .then(d => { setRows(d); setLd(false); })
       .catch(() => { toast.error("Load failed"); setLd(false); });
   };
-  useEffect(load, []);
+  useEffect(fetchRows, []);
 
+  /* delete single */
   const del = id => {
-    if (!window.confirm("Delete payment?")) return;
+    if (!window.confirm("Delete item?")) return;
     fetch(`http://127.0.0.1:8000/api/payments/${id}/`, { method: "DELETE" })
-      .then(r => { if (!r.ok) throw new Error(); toast.success("Deleted"); load(); })
+      .then(r => { if (!r.ok) throw new Error(); toast.success("Deleted"); fetchRows(); })
       .catch(() => toast.error("Delete failed"));
   };
 
+  /* bulk delete */
+  const bulkDelete = ids => {
+    Promise.all(ids.map(id =>
+      fetch(`http://127.0.0.1:8000/api/payments/${id}/`, { method: "DELETE" })))
+      .then(() => { toast.success("Bulk delete done"); fetchRows(); })
+      .catch(()  =>  toast.error("Some deletes failed"));
+  };
+
+  /* table columns */
   const cols = [
-    { key: "id",              label: "ID"       },
-    { key: "invoice_id",      label: "Invoice"  },
-    { key: "invoice_student", label: "Student"  },
-    { key: "amount",          label: "Amount"   },
-    { key: "payment_date",    label: "Date"     },
-    { key: "method",          label: "Method"   },
-    { key: "actions",         label: ""         },
+    { key: "invoice_id",  label: "Invoice" },
+    { key: "invoice_student", label: "Student" },
+    { key: "amount",      label: "Amount" },
+    { key: "payment_date",label: "Date" },
+    { key: "method",      label: "Method" },
+    /* last col renders action buttons */
+    {
+      key: "_actions",
+      label: "",
+      render: r => (
+        <>
+          <button
+            onClick={() => { setEdt(r); setDr(true); }}
+            className="text-blue-600 hover:underline mr-2">Edit</button>
+          <button
+            onClick={() => del(r.id)}
+            className="text-red-600 hover:underline">Delete</button>
+        </>
+      )
+    }
   ];
 
-  const rowsA = rows.map(r => ({
-    ...r,
-    actions: (
-      <div className="flex gap-2">
-        <button onClick={() => { setEdt(r); setDr(true); }}
-                className="text-blue-600 hover:underline">Edit</button>
-        <button onClick={() => del(r.id)}
-                className="text-red-600 hover:underline">Delete</button>
-      </div>
-    ),
-  }));
-
+  /* UI */
   return (
     <div>
       <Toaster position="top-right" />
       <h2 className="text-2xl font-bold mb-4 border-b pb-2 flex justify-between">
         Payments
-        <button onClick={() => { setEdt(null); setDr(true); }}
-                className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
+        <button
+          onClick={() => { setEdt(null); setDr(true); }}
+          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">
           + Add
         </button>
       </h2>
 
-      {loading ? <p className="p-4">Loading…</p>
-               : <DataTable rows={rowsA} columns={cols} />}
+      {load ? (
+        <p className="p-4">Loading…</p>
+      ) : (
+        <DataTable
+          columns={cols}
+          rows={rows}
+          onBulkDelete={bulkDelete}
+        />
+      )}
 
-      <Drawer open={drawer} onClose={() => setDr(false)}
-              title={editRow ? "Edit Payment" : "Add Payment"}>
+      {/* drawer */}
+      <Drawer
+        open={drawer}
+        onClose={() => setDr(false)}
+        title={edit ? "Edit Payment" : "Add Payment"} >
         {drawer && (
           <PaymentForm
-            initial={editRow}
-            onSaved={() => { setDr(false); load(); }}
+            initial={edit}
+            onSaved={() => { setDr(false); fetchRows(); }}
             onCancel={() => setDr(false)}
           />
         )}

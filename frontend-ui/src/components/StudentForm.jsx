@@ -1,55 +1,67 @@
+// src/components/StudentForm.jsx
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
+/* helper */
+const emptyForm = {
+  first_name: "",
+  last_name: "",
+  gender: "M",
+  date_of_birth: "",
+  profile_image: null,
+  classroom: "",
+  teacher: "",
+  enrollment_date: "",
+  enrollment_history: "",
+  uploaded_documents: null,
+  evaluation_notes: "",
+  is_active: true,
+  allergies: "",
+  medical_notes: "",
+  guardian_name: "",
+  guardian_contact: "",
+  emergency_contact: "",
+};
+
 export default function StudentForm({ initial, onSaved, onCancel }) {
-  /* ─── base state (all fields) ─── */
-  const [form, setForm] = useState({
-    first_name: "",           last_name: "",
-    date_of_birth: "",        gender: "M",
-    profile_image: null,      classroom: "",
-    teacher: "",              enrollment_date: "",
-    enrollment_history: "",   uploaded_documents: null,
-    evaluation_notes: "",     is_active: true,
-
-    allergies: "",            medical_notes: "",
-    guardian_name: "",        guardian_contact: "",
-    emergency_contact: "",
-
-    ...initial,
-  });
   const isEdit = !!initial?.id;
-
-  /* ─── dropdown data ─── */
+  const [form, setForm] = useState({ ...emptyForm, ...initial });
   const [classrooms, setClassrooms] = useState([]);
-  const [teachers,   setTeachers]   = useState([]);
+  const [staff, setStaff] = useState([]);
 
+  /* dropdown data -------------------------------------------------------- */
   useEffect(() => {
     fetch("http://127.0.0.1:8000/api/classrooms/").then(r => r.json()).then(setClassrooms);
-    fetch("http://127.0.0.1:8000/api/staff/").then(r => r.json()).then(setTeachers);
+    fetch("http://127.0.0.1:8000/api/staff/").then(r => r.json()).then(setStaff);
   }, []);
 
-  /* ─── helpers ─── */
-  const update     = (k, v) => setForm({ ...form, [k]: v });
-  const handleFile = (k, e) => update(k, e.target.files.length ? e.target.files[0] : null);
+  /* helpers -------------------------------------------------------------- */
+  const up = (k, v) => setForm(prev => ({ ...prev, [k]: v }));
 
-  /* ─── submit ─── */
-  const handleSubmit = (e) => {
+  const submit = e => {
     e.preventDefault();
-    const url    = `http://127.0.0.1:8000/api/students/${isEdit ? initial.id + "/" : ""}`;
-    const method = isEdit ? "PUT" : "POST";
 
-    const body = new FormData();
+    const fd = new FormData();
     Object.entries(form).forEach(([k, v]) => {
-      if (v !== null && v !== undefined && v !== "") body.append(k, v);
+      if (v !== null && v !== undefined) fd.append(k, v);
     });
 
-    fetch(url, { method, body })
-      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-      .then(() => { toast.success(isEdit ? "Student updated" : "Student added"); onSaved(); })
+    const url = `http://127.0.0.1:8000/api/students/${isEdit ? initial.id + "/" : ""}`;
+    fetch(url, {
+      method: isEdit ? "PUT" : "POST",
+      body: fd,
+    })
+      .then(r => {
+        if (!r.ok) throw 0;
+        return r.json();
+      })
+      .then(() => {
+        toast.success(isEdit ? "Student updated" : "Student added");
+        onSaved();
+      })
       .catch(() => toast.error("Save failed"));
   };
 
-  /* ─── field component for brevity ─── */
   const L = ({ label, children }) => (
     <div>
       <label className="block text-sm mb-1">{label}</label>
@@ -57,121 +69,198 @@ export default function StudentForm({ initial, onSaved, onCancel }) {
     </div>
   );
 
-  /* ─── render ─── */
+  /* JSX ------------------------------------------------------------------ */
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={submit} className="space-y-6 overflow-y-auto max-h-[80vh] p-1 pr-2">
 
-      {/* personal */}
+      {/* --- personal ----------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-4">
         <L label="First name">
-          <input required value={form.first_name} onChange={e => update("first_name", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            autoFocus
+            value={form.first_name}
+            onChange={e => up("first_name", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
+
         <L label="Last name">
-          <input required value={form.last_name} onChange={e => update("last_name", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            value={form.last_name}
+            onChange={e => up("last_name", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <L label="Date of birth">
-          <input type="date" required value={form.date_of_birth}
-                 onChange={e => update("date_of_birth", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
-        </L>
+
+      <div className="grid grid-cols-3 gap-4">
         <L label="Gender">
-          <select value={form.gender} onChange={e => update("gender", e.target.value)}
-                  className="w-full border rounded px-3 py-1">
+          <select
+            value={form.gender}
+            onChange={e => up("gender", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          >
             <option value="M">Male</option>
             <option value="F">Female</option>
             <option value="O">Other</option>
           </select>
         </L>
+
+        <L label="Date of birth">
+          <input
+            type="date"
+            value={form.date_of_birth}
+            onChange={e => up("date_of_birth", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
+        </L>
+
+        <L label="Profile image">
+          <input
+            type="file"
+            accept="image/*"
+            onChange={e => up("profile_image", e.target.files[0] || null)}
+            className="w-full border rounded px-3 py-1"
+          />
+        </L>
       </div>
 
-      {/* profile image & docs */}
-      <L label="Profile image">
-        <input type="file" accept="image/*" onChange={e => handleFile("profile_image", e)} />
-      </L>
-      <L label="Uploaded documents (PDF / ZIP / …)">
-        <input type="file" multiple onChange={e => handleFile("uploaded_documents", e)} />
-      </L>
-
-      {/* classroom & teacher */}
+      {/* --- academic ----------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-4">
         <L label="Classroom">
-          <select value={form.classroom || ""} onChange={e => update("classroom", e.target.value || null)}
-                  className="w-full border rounded px-3 py-1">
+          <select
+            value={form.classroom || ""}
+            onChange={e => up("classroom", e.target.value || null)}
+            className="w-full border rounded px-3 py-1"
+          >
             <option value="">—</option>
-            {classrooms.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {classrooms.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
           </select>
         </L>
+
         <L label="Teacher">
-          <select value={form.teacher || ""} onChange={e => update("teacher", e.target.value || null)}
-                  className="w-full border rounded px-3 py-1">
+          <select
+            value={form.teacher || ""}
+            onChange={e => up("teacher", e.target.value || null)}
+            className="w-full border rounded px-3 py-1"
+          >
             <option value="">—</option>
-            {teachers.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+            {staff.map(t => (
+              <option key={t.id} value={t.id}>{t.full_name}</option>
+            ))}
           </select>
         </L>
       </div>
 
-      {/* enrollment meta */}
-      <L label="Enrollment date">
-        <input type="date" value={form.enrollment_date}
-               onChange={e => update("enrollment_date", e.target.value)}
-               className="w-full border rounded px-3 py-1" />
-      </L>
-      <L label="Enrollment history">
-        <textarea value={form.enrollment_history} rows={2}
-                  onChange={e => update("enrollment_history", e.target.value)}
-                  className="w-full border rounded px-3 py-2" />
-      </L>
-      <L label="Evaluation notes">
-        <textarea value={form.evaluation_notes} rows={2}
-                  onChange={e => update("evaluation_notes", e.target.value)}
-                  className="w-full border rounded px-3 py-2" />
+      <div className="grid grid-cols-2 gap-4">
+        <L label="Enrollment date">
+          <input
+            type="date"
+            value={form.enrollment_date}
+            onChange={e => up("enrollment_date", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
+        </L>
+
+        <L label="Enrollment history">
+          <input
+            value={form.enrollment_history}
+            onChange={e => up("enrollment_history", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+            placeholder="Infant 2022 → Toddler 2023"
+          />
+        </L>
+      </div>
+
+      {/* --- docs & evaluation ------------------------------------------- */}
+      <L label="Upload documents">
+        <input
+          type="file"
+          multiple
+          onChange={e => up("uploaded_documents", e.target.files)}
+          className="w-full border rounded px-3 py-1"
+        />
       </L>
 
-      {/* medical */}
+      <L label="Evaluation notes">
+        <textarea
+          rows={2}
+          value={form.evaluation_notes}
+          onChange={e => up("evaluation_notes", e.target.value)}
+          className="w-full border rounded px-3 py-2"
+        />
+      </L>
+
+      {/* --- health ------------------------------------------------------- */}
       <div className="grid grid-cols-2 gap-4">
         <L label="Allergies">
-          <input value={form.allergies} onChange={e => update("allergies", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            value={form.allergies}
+            onChange={e => up("allergies", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
+
         <L label="Medical notes">
-          <input value={form.medical_notes} onChange={e => update("medical_notes", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            value={form.medical_notes}
+            onChange={e => up("medical_notes", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
       </div>
 
-      {/* guardian */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* --- guardian ----------------------------------------------------- */}
+      <div className="grid grid-cols-3 gap-4">
         <L label="Guardian name">
-          <input value={form.guardian_name} onChange={e => update("guardian_name", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            value={form.guardian_name}
+            onChange={e => up("guardian_name", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
+
         <L label="Guardian contact">
-          <input value={form.guardian_contact} onChange={e => update("guardian_contact", e.target.value)}
-                 className="w-full border rounded px-3 py-1" />
+          <input
+            value={form.guardian_contact}
+            onChange={e => up("guardian_contact", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
+        </L>
+
+        <L label="Emergency contact">
+          <input
+            value={form.emergency_contact}
+            onChange={e => up("emergency_contact", e.target.value)}
+            className="w-full border rounded px-3 py-1"
+          />
         </L>
       </div>
-      <L label="Emergency contact">
-        <input value={form.emergency_contact} onChange={e => update("emergency_contact", e.target.value)}
-               className="w-full border rounded px-3 py-1" />
+
+      {/* --- status ------------------------------------------------------- */}
+      <L label="Active">
+        <input
+          type="checkbox"
+          checked={form.is_active}
+          onChange={e => up("is_active", e.target.checked)}
+        />
       </L>
 
-      {/* active flag */}
-      <div className="flex items-center gap-2">
-        <input id="is_active" type="checkbox" checked={form.is_active}
-               onChange={e => update("is_active", e.target.checked)} />
-        <label htmlFor="is_active" className="text-sm">Is active</label>
-      </div>
-
-      {/* buttons */}
-      <div className="flex gap-2">
-        <button type="submit" className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
+      {/* --- buttons ------------------------------------------------------ */}
+      <div className="flex gap-2 pt-2">
+        <button
+          type="submit"
+          className="flex-1 bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+        >
           {isEdit ? "Update" : "Add"}
         </button>
-        <button type="button" onClick={onCancel} className="flex-1 border rounded py-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="flex-1 border rounded py-2"
+        >
           Cancel
         </button>
       </div>
