@@ -1,68 +1,122 @@
+// src/pages/Dashboard.jsx
 import React, { useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
-import KpiCard from "../components/KpiCard";
-import toast, { Toaster } from "react-hot-toast";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+const API = "http://127.0.0.1:8000";
+
+function StatCard({ title, value, sub, warn }) {
+  return (
+    <div className="bg-white shadow rounded-xl p-4 flex-1 relative">
+      {warn && (
+        <span className="absolute -top-1 -right-1 bg-rose-600 text-white text-xs px-2 py-0.5 rounded-full">
+          Low
+        </span>
+      )}
+      <p className="text-sm text-gray-500">{title}</p>
+      <p className="text-3xl font-semibold text-gray-800">{value}</p>
+      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const [summary, setSummary] = useState(null);
-  const [loading, setLd] = useState(true);
+  const [stats, setStats] = useState(null);
+  const [err, setErr] = useState(false);
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/dashboard/summary/")
-      .then(r => r.json())
-      .then(d => { setSummary(d); setLd(false); })
-      .catch(() => { toast.error("Load failed"); setLd(false); });
+    const token = localStorage.getItem("access_token");
+    fetch(`${API}/api/dashboard/summary/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(setStats)
+      .catch(() => setErr(true));
   }, []);
 
-  if (loading) return <p className="p-4">Loading dashboard…</p>;
-  if (!summary)   return null;
+  if (err) return <p className="p-4 text-red-600">Failed to load dashboard.</p>;
+  if (!stats) return <p className="p-4">Loading dashboard…</p>;
 
-  /* fake data for 7-day trend – replace with real time-series later */
-  const attendanceTrend = Array.from({ length: 7 }, (_, i) => ({
-    day: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][i],
-    pct: summary.today_attendance + (Math.random()*10-5),
-  }));
+  // normalize between old & new key names
+  const totalStudents =
+    stats.total_students ?? stats.students ?? 0;
+  const totalStaff =
+    stats.total_staff ?? stats.staff ?? 0;
+  const totalInvoices =
+    stats.total_invoices ?? stats.total_invoices ?? 0;
+  const unpaidInvoices =
+    stats.unpaid_invoices ?? stats.unpaid_invoices ?? 0;
+  const attendancePct =
+    stats.today_attendance ??
+    stats.attendance_today ??
+    0;
+  const inventoryTotal =
+    stats.inventory_total ?? 0;
+  const inventoryLow =
+    stats.inventory_low ?? 0;
 
-  const pieData = [
-    { name: "Paid",   value: summary.total_invoices - summary.unpaid_invoices },
-    { name: "Unpaid", value: summary.unpaid_invoices },
+  const chartData = [
+    { name: "Students", value: totalStudents },
+    { name: "Staff",    value: totalStaff },
+    { name: "Invoices", value: totalInvoices },
+    { name: "Stock",    value: inventoryTotal },
   ];
-  const COLORS = ["#059669", "#ef4444"];   // green, red
 
   return (
-    <div className="space-y-6">
-      <Toaster position="top-right" />
+    <div className="space-y-8">
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <KpiCard title="Students"        value={summary.total_students}   color="blue"  />
-        <KpiCard title="Staff"           value={summary.total_staff}      color="indigo"/>
-        <KpiCard title="Unpaid invoices" value={summary.unpaid_invoices} color="orange"/>
-        <KpiCard title="Today attendance" value={summary.today_attendance + '%'} color="green" />
+      {/* Top row */}
+      <div className="grid sm:grid-cols-3 gap-6">
+        <StatCard title="Students" value={totalStudents} />
+        <StatCard title="Staff" value={totalStaff} />
+        <StatCard
+          title="Attendance"
+          value={`${attendancePct}%`}
+          sub="Present today"
+        />
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* attendance trend */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold mb-2">Attendance last 7 days</h3>
-          <LineChart width={380} height={200} data={attendanceTrend}>
-            <XAxis dataKey="day" />
-            <YAxis domain={[0,100]} />
-            <Tooltip />
-            <Line type="monotone" dataKey="pct" stroke="#3b82f6" strokeWidth={2} />
-          </LineChart>
-        </div>
+      {/* Second row */}
+      <div className="grid sm:grid-cols-3 gap-6">
+        <StatCard
+          title="Total Invoices"
+          value={totalInvoices.toLocaleString(undefined, {
+            style: "currency",
+            currency: "AED",
+            maximumFractionDigits: 0,
+          })}
+        />
+        <StatCard
+          title="Unpaid Invoices"
+          value={unpaidInvoices}
+        />
+        <StatCard
+          title="Inventory Items"
+          value={inventoryTotal}
+          sub={`${inventoryLow} < 5`}
+          warn={inventoryLow > 0}
+        />
+      </div>
 
-        {/* invoices pie */}
-        <div className="bg-white rounded-xl shadow p-4">
-          <h3 className="font-semibold mb-2">Invoices status</h3>
-          <PieChart width={380} height={200}>
-            <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} label>
-              {pieData.map((_, idx) => <Cell key={idx} fill={COLORS[idx]} />)}
-            </Pie>
+      {/* Bar chart */}
+      <div className="bg-white shadow rounded-xl p-4 h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData}>
+            <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+            <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
             <Tooltip />
-          </PieChart>
-        </div>
+            <Bar dataKey="value" fill="#0284c7" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );

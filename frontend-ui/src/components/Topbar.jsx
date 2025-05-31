@@ -1,15 +1,21 @@
-import React from "react";
-import ThemeToggle from "./ThemeToggle";   // <-- dark-mode switch
+// src/components/Topbar.jsx
+import { Link } from "react-router-dom";
 
 export default function Topbar() {
   return (
-    <header className="bg-white dark:bg-gray-900 border-b shadow px-6 py-4 flex justify-between items-center">
-      <h1 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-        PP Nursery Management
-      </h1>
+    <header className="flex items-center gap-4 bg-white border-b shadow px-6 py-3">
+      {/* LOGO */}
+      <Link to="/dashboard" className="inline-flex items-center">
+        {/* Use <img> for files inside /public */}
+        <img
+          src="/lumino.png"
+          alt="LUMINO"
+          className="h-8 w-auto"
+        />
+      </Link>
 
-      {/* dark / light switch */}
-      <ThemeToggle />
+      {/* optional app name text */}
+      <span className="text-lg font-semibold text-gray-800"> Nursery Management</span>
     </header>
   );
 }
