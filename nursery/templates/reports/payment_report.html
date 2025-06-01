@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payments Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background: #f2f2f2; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Payments Report</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Invoice #</th>
+                <th>Amount</th>
+                <th>Payment Date</th>
+                <th>Method</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in payments %}
+            <tr>
+                <td>{{ payment.invoice.student.first_name }} {{ payment.invoice.student.last_name }}</td>
+                <td>{{ payment.invoice.invoice_number }}</td>
+                <td>{{ payment.amount }}</td>
+                <td>{{ payment.payment_date }}</td>
+                <td>{{ payment.payment_method }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

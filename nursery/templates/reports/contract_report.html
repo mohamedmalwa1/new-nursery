@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Contracts Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background: #f2f2f2; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Payroll Contracts Report</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Staff Member</th>
+                <th>Position</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Salary</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for contract in contracts %}
+            <tr>
+                <td>{{ contract.staff.full_name }}</td>
+                <td>{{ contract.position }}</td>
+                <td>{{ contract.contract_start }}</td>
+                <td>{{ contract.contract_end }}</td>
+                <td>{{ contract.salary }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Staff Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background: #f2f2f2; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Staff Report</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Email</th>
+                <th>Phone</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in staff %}
+            <tr>
+                <td>{{ member.full_name }}</td>
+                <td>{{ member.role }}</td>
+                <td>{{ member.email }}</td>
+                <td>{{ member.phone }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+

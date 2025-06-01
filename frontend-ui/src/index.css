@@ -2,3 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@media print {
+  /* Hide sidebar and header when printing */
+  .no-print, .sidebar, .topbar {
+    display: none !important;
+  }
+
+  /* Expand main content to full width */
+  .print-area {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+  }
+}
+

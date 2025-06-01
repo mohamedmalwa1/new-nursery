@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border: 1px solid #ccc; }
+        th { background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h2>Invoice Report</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Due Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td>{{ invoice.student.full_name }}</td>
+                <td>{{ invoice.amount }}</td>
+                <td>{{ invoice.status }}</td>
+                <td>{{ invoice.due_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
+

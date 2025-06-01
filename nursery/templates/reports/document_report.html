@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Documents Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background: #f2f2f2; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Student Documents Report</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Student</th>
+                <th>Document Type</th>
+                <th>Issue Date</th>
+                <th>Expiry Date</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for document in documents %}
+            <tr>
+                <td>{{ document.student.first_name }} {{ document.student.last_name }}</td>
+                <td>{{ document.document_type }}</td>
+                <td>{{ document.issue_date }}</td>
+                <td>{{ document.expiry_date }}</td>
+                <td>{{ document.notes }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
