@@ -1,21 +1,41 @@
 // src/components/Topbar.jsx
-import { Link } from "react-router-dom";
+import React, { useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { Power } from "lucide-react";          // ← logout icon
+import { AuthContext } from "../context/AuthContext";
 
 export default function Topbar() {
-  return (
-    <header className="flex items-center gap-4 bg-white border-b shadow px-6 py-3">
-      {/* LOGO */}
-      <Link to="/dashboard" className="inline-flex items-center">
-        {/* Use <img> for files inside /public */}
-        <img
-          src="/lumino.png"
-          alt="LUMINO"
-          className="h-8 w-auto"
-        />
-      </Link>
+  const navigate = useNavigate();
+  const { user, logout } = useContext(AuthContext);
 
-      {/* optional app name text */}
-      <span className="text-lg font-semibold text-gray-800"> Nursery Management</span>
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
+
+  return (
+    <header className="h-16 flex items-center justify-between px-6 border-b bg-white shadow-sm">
+      {/* left – breadcrumbs or page title */}
+      <h1 className="text-lg font-medium text-indigo-700">
+        Nursery Management
+      </h1>
+
+      {/* right – user + logout */}
+      <div className="flex items-center gap-4">
+        {user && (
+          <span className="text-sm text-gray-600 hidden sm:block">
+            {user.username}
+          </span>
+        )}
+
+        <button
+          onClick={handleLogout}
+          className="p-2 rounded-full hover:bg-indigo-50 text-gray-600 hover:text-red-600 transition"
+          title="Log out"
+        >
+          <Power className="h-5 w-5" />
+        </button>
+      </div>
     </header>
   );
 }

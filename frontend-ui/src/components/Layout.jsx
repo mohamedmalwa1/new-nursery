@@ -1,24 +1,29 @@
 // src/components/Layout.jsx
 import React from "react";
 import { Outlet } from "react-router-dom";
+
 import Sidebar from "./Sidebar";
 import Topbar  from "./Topbar";
+import { Toaster } from "react-hot-toast";     // ← NEW
 
 export default function Layout() {
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
-      {/* sidebar */}
+      {/* left navigation */}
       <Sidebar />
 
-      {/* right-hand column (topbar + page content) */}
+      {/* right side: topbar + page content */}
       <div className="flex flex-col flex-1">
         <Topbar />
 
-        {/* page wrapper → provides outer padding */}
+        {/* global toast pop-ups */}
+        <Toaster position="top-right" />       {/* ← NEW */}
+
+        {/* main scrollable area */}
         <div className="page flex-1 overflow-y-auto">
-          {/* card wrapper → white rounded panel */}
+          {/* white card wrapper for every page */}
           <div className="card">
-            <Outlet />   {/* ← your Students / Staff / … component */}
+            <Outlet />   {/* Students / Staff / etc. render here */}
           </div>
         </div>
       </div>

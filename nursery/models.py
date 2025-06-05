@@ -1,5 +1,5 @@
 # ~/nursery-system/nursery/models.py
-
+from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
@@ -88,28 +88,41 @@ class Student(models.Model):
 # ---------------------- STAFF ----------------------
 class Staff(models.Model):
     ROLES = [
-        ('TEACHER', 'Teacher'),
-        ('ASSISTANT', 'Assistant'),
-        ('ADMIN', 'Administrator'),
-        ('Nurse', 'Medical')
+        ("TEACHER",    "Teacher"),
+        ("ASSISTANT",  "Assistant"),
+        ("ADMIN",      "Administrator"),
+        ("NURSE",      "Medical"),
     ]
 
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    role = models.CharField(max_length=20, choices=ROLES)
-    hire_date = models.DateField(default=timezone.now)
-    email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20)
-    document = models.FileField(upload_to='staff/documents/', null=True, blank=True)
-    is_active = models.BooleanField(default=True)
+    # ①  NEW  – connect each Staff row to a login account
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name="staff_profile",
+        null=True,           # keep null=True so old rows still work
+        blank=True,
+    )
 
+    first_name = models.CharField(max_length=50)
+    last_name  = models.CharField(max_length=50)
+    role       = models.CharField(max_length=20, choices=ROLES)
+    hire_date  = models.DateField(default=timezone.now)
+
+    email      = models.EmailField(unique=True)
+    phone      = models.CharField(max_length=20)
+    document   = models.FileField(
+        upload_to="staff/documents/", null=True, blank=True
+    )
+    is_active  = models.BooleanField(default=True)
+
+    # --- convenience helpers -----------------------------------
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
 
     class Meta:
-        ordering = ['-hire_date']
-        verbose_name_plural = 'Staff'
+        ordering = ["-hire_date"]
+        verbose_name_plural = "Staff"
 
     def __str__(self):
         return f"{self.full_name} ({self.get_role_display()})"
