@@ -1,30 +1,27 @@
-# config/urls.py  (جذْر المشروع)
 from django.contrib import admin
 from django.urls import path, include
 
-# Swagger (drf-spectacular)
+# drf-spectacular for OpenAPI / Swagger
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
-urlpatterns = [
+# Simple JWT views
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-    # لوحة تحكّم Django
+urlpatterns = [
+    # 1) Django admin
     path('admin/', admin.site.urls),
 
-    # ملفّ مخطَّط OpenAPI وواجهة Swagger
-    path('api/schema/', SpectacularAPIView.as_view(),             name='schema'),
-    path('api/docs/',   SpectacularSwaggerView.as_view(url_name='schema'),
-                                                                  name='swagger-ui'),
+    # 2) OpenAPI / Swagger (optional)
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 
-    # كلّ مسارات تطبيقك موجودة فى nursery/urls.py وتُقدَّم تحت ‎/api/**
+    # 3) Include **all standard DRF endpoints** (viewsets, etc.) at /api/…
     path('api/', include('nursery.urls')),
-]
 
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+    # 4) Include **all PDF‐report endpoints** under /api/…
+    path('api/', include('nursery.urls_pdf')),
 
-urlpatterns += [
+    # 5) JWT token endpoints (if you use JWT auth)
     path('api/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

@@ -1,23 +1,77 @@
+/* ──────────────────────────────────────────────
+   src/index.css  (global styles)
+─────────────────────────────────────────────── */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Global App Colors */
+:root {
+  --primary: #3498db;
+  --primary-dark: #2980b9;
+  --secondary: #2ecc71;
+  --secondary-dark: #27ae60;
+  --danger: #e74c3c;
+  --danger-dark: #c0392b;
+}
+
+/* Consistent Print Styles */
 @media print {
-  /* Hide sidebar and header when printing */
-  .no-print, .sidebar, .topbar {
+  body * {
+    visibility: hidden;
+  }
+  .printable,
+  .printable * {
+    visibility: visible;
+  }
+  .printable {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+  .no-print {
     display: none !important;
   }
+}
 
-  /* Expand main content to full width */
-  .print-area {
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
+/* Utility Buttons */
+.btn {
+  @apply px-4 py-2 rounded-md font-medium transition-colors;
+}
+.btn-primary {
+  @apply bg-blue-600 hover:bg-blue-700 text-white;
+}
+.btn-success {
+  @apply bg-green-600 hover:bg-green-700 text-white;
+}
+.btn-danger {
+  @apply bg-red-600 hover:bg-red-700 text-white;
+}
 
-  body {
-    background: white !important;
-    color: black !important;
-  }
+/* Form Elements */
+.input-field {
+  @apply w-full px-3 py-2 border rounded-md
+          focus:outline-none focus:ring-2 focus:ring-blue-500;
+}
+
+/* ───────── NEW GLOBAL WRAPPERS ───────── */
+
+/* Page wrapper: keeps uniform margins on every screen */
+.page {
+  @apply px-4 sm:px-6 lg:px-8 py-6 space-y-6;
+}
+
+/* Card / module container */
+.card {
+  @apply bg-white rounded-2xl shadow-lg p-6 overflow-hidden;
+}
+
+/* Dark-mode support (optional) */
+.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+.dark .card {
+  @apply bg-gray-800 text-gray-100 shadow-md;
 }
 

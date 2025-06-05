@@ -1,7 +1,7 @@
+# ~/nursery-system/nursery/models.py
+
 from django.db import models
 from django.utils import timezone
-from django.core.exceptions import ValidationError
-
 
 # ---------------------- CLASSROOM ----------------------
 class Classroom(models.Model):
@@ -23,14 +23,6 @@ class Classroom(models.Model):
 
 
 # ---------------------- STUDENT ----------------------
-from django.db import models
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-
-# Assuming these already exist above:
-# - Classroom
-# - Staff
-
 class Student(models.Model):
     GENDER_CHOICES = [
         ('M', 'Male'),
@@ -38,33 +30,32 @@ class Student(models.Model):
         ('O', 'Other')
     ]
 
-    # Personal Information
     first_name = models.CharField(max_length=50)
     last_name = models.CharField(max_length=50)
     date_of_birth = models.DateField()
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES)
     profile_image = models.ImageField(upload_to='students/profiles/', null=True, blank=True)
 
-    # Academic
-    classroom = models.ForeignKey('Classroom', on_delete=models.SET_NULL, null=True, related_name='students')
-    teacher = models.ForeignKey('Staff', on_delete=models.SET_NULL, null=True, related_name='assigned_students')
+    classroom = models.ForeignKey(
+        Classroom, on_delete=models.SET_NULL, null=True, related_name='students'
+    )
+    teacher = models.ForeignKey(
+        'Staff', on_delete=models.SET_NULL, null=True, related_name='assigned_students'
+    )
     enrollment_date = models.DateField(default=timezone.now)
-    enrollment_history = models.TextField(blank=True, help_text="Previous classrooms, e.g., 'Infant 2022 → Toddler 2023'")
+    enrollment_history = models.TextField(
+        blank=True,
+        help_text="Previous classrooms, e.g., 'Infant 2022 → Toddler 2023'"
+    )
 
-    # Documents
     uploaded_documents = models.FileField(upload_to='students/documents/', null=True, blank=True)
+    evaluation_notes = models.TextField(blank=True)
 
-    # Evaluation
-    evaluation_notes = models.TextField(blank=True, help_text="Summarized observations, strengths, or notes.")
-
-    # Status
     is_active = models.BooleanField(default=True)
 
-    # Health
     allergies = models.TextField(blank=True)
     medical_notes = models.TextField(blank=True)
 
-    # Guardian
     guardian_name = models.CharField(max_length=100)
     guardian_contact = models.CharField(max_length=20)
     emergency_contact = models.CharField(max_length=20)
@@ -92,7 +83,6 @@ class Student(models.Model):
 
     def __str__(self):
         return f"{self.full_name} ({self.classroom})"
-
 
 
 # ---------------------- STAFF ----------------------
@@ -134,8 +124,12 @@ class Attendance(models.Model):
         ('SICK', 'Sick')
     ]
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True, related_name='attendances')
-    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, null=True, blank=True, related_name='attendances')
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, null=True, blank=True, related_name='attendances'
+    )
+    staff = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, null=True, blank=True, related_name='attendances'
+    )
     date = models.DateField(default=timezone.now)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES)
     check_in = models.TimeField(null=True, blank=True)
@@ -147,16 +141,9 @@ class Attendance(models.Model):
         ordering = ['-date']
         verbose_name_plural = 'Attendance Records'
 
-    def clean(self):
-        if self.date > timezone.now().date():
-            raise ValidationError("Attendance date cannot be in the future")
-        if not self.student and not self.staff:
-            raise ValidationError("Attendance must be linked to a student or a staff member.")
-
     def __str__(self):
         target = self.student or self.staff
         return f"{target} - {self.date} ({self.status})"
-
 
 
 # ---------------------- MEDICAL RECORD ----------------------
@@ -168,7 +155,9 @@ class MedicalRecord(models.Model):
         ('VACCINATION', 'Vaccination')
     ]
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='medical_records')
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name='medical_records'
+    )
     record_type = models.CharField(max_length=20, choices=RECORD_TYPES)
     date = models.DateField(default=timezone.now)
     description = models.TextField()
@@ -190,14 +179,15 @@ class Invoice(models.Model):
         ('PARTIAL', 'Partially Paid')
     ]
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='invoices')
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name='invoices'
+    )
     issue_date = models.DateField(default=timezone.now)
     due_date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     description = models.TextField(blank=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='UNPAID')
 
-    # Business Logic
     is_income = models.BooleanField(default=True)
     is_expense = models.BooleanField(default=False)
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -228,7 +218,9 @@ class Payment(models.Model):
         ('TRANSFER', 'Bank Transfer')
     ]
 
-    invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='payments')
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, related_name='payments'
+    )
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     payment_date = models.DateField(default=timezone.now)
     method = models.CharField(max_length=20, choices=PAYMENT_METHODS)
@@ -258,9 +250,12 @@ class InventoryItem(models.Model):
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
     last_restock = models.DateField(null=True, blank=True)
 
-    # Custody
-    staff_custodian = models.ForeignKey('Staff', on_delete=models.SET_NULL, null=True, blank=True, related_name='custodied_items')
-    assigned_to_student = models.ForeignKey('Student', on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_items')
+    staff_custodian = models.ForeignKey(
+        Staff, on_delete=models.SET_NULL, null=True, blank=True, related_name='custodied_items'
+    )
+    assigned_to_student = models.ForeignKey(
+        Student, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_items'
+    )
 
     class Meta:
         ordering = ['name']
@@ -268,6 +263,22 @@ class InventoryItem(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_category_display()})"
 
+    @property
+    def remaining_quantity(self):
+        """
+        If this item is assigned to a student, remove exactly 1 unit.
+        Otherwise all units remain.
+        """
+        if self.assigned_to_student:
+            return max(self.quantity - 1, 0)
+        return self.quantity
+
+    @property
+    def total_value(self):
+        """
+        Total value of the entire stock: quantity × unit_price
+        """
+        return self.quantity * self.unit_price
 
 
 # ---------------------- STUDENT DOCUMENT ----------------------
@@ -279,7 +290,9 @@ class StudentDocument(models.Model):
         ('OTHER', 'Other')
     ]
 
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='documents')
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name='documents'
+    )
     doc_type = models.CharField(max_length=20, choices=DOC_TYPES)
     file = models.FileField(upload_to='student_documents/')
     issue_date = models.DateField()
@@ -298,9 +311,11 @@ class StudentDocument(models.Model):
         return f"{self.student} - {self.get_doc_type_display()}"
 
 
-#Payroll Contract
+# ---------------------- PAYROLL CONTRACT ----------------------
 class PayrollContract(models.Model):
-    staff = models.OneToOneField('Staff', on_delete=models.CASCADE, related_name='payroll_contract')
+    staff = models.OneToOneField(
+        Staff, on_delete=models.CASCADE, related_name='payroll_contract'
+    )
     base_salary = models.DecimalField(max_digits=10, decimal_places=2)
     allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     tax_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00)
@@ -311,10 +326,15 @@ class PayrollContract(models.Model):
     def __str__(self):
         return f"{self.staff.full_name} Payroll Contract"
 
-#Salary Record
+
+# ---------------------- SALARY RECORD ----------------------
 class SalaryRecord(models.Model):
-    staff = models.ForeignKey('Staff', on_delete=models.CASCADE, related_name='salary_records')
-    contract = models.ForeignKey('PayrollContract', on_delete=models.SET_NULL, null=True, blank=True)
+    staff = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, related_name='salary_records'
+    )
+    contract = models.ForeignKey(
+        PayrollContract, on_delete=models.SET_NULL, null=True, blank=True
+    )
     month = models.DateField(help_text="Use first day of month, e.g. 2024-05-01")
     base_salary = models.DecimalField(max_digits=10, decimal_places=2)
     allowance = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -325,7 +345,9 @@ class SalaryRecord(models.Model):
     net_salary = models.DecimalField(max_digits=10, decimal_places=2)
     is_paid = models.BooleanField(default=False)
     payment_date = models.DateField(null=True, blank=True)
-    payment_reference = models.ForeignKey('Payment', on_delete=models.SET_NULL, null=True, blank=True, related_name='salary_links')
+    payment_reference = models.ForeignKey(
+        Payment, on_delete=models.SET_NULL, null=True, blank=True, related_name='salary_links'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

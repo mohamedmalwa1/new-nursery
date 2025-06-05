@@ -1,105 +1,164 @@
-// src/components/DataTable.jsx
-import { useState, useMemo } from "react";
-import * as XLSX from "xlsx";
+// components/DataTable.jsx  – header actions at far right
+import React, { useState } from "react";
 
-/** col = { key, label, render? } */
-export default function DataTable({ columns, rows, onBulkDelete }) {
-  /* search + sort */
-  const [query, setQuery]     = useState("");
-  const [sortKey, setSortKey] = useState(null);
-  const [asc, setAsc]         = useState(true);
+export default function DataTable({
+  columns,
+  rows,
+  defaultSort = "",
+  onBulkDelete,
+  showSearch = true,
+}) {
+  /* ─── state ─── */
+  const [sortKey, setSortKey] = useState(defaultSort);
+  const [sortDir, setSortDir] = useState("asc");
+  const [selected, setSelected] = useState([]);
+  const [q, setQ] = useState("");
 
-  /* selection */
-  const [sel, setSel] = useState([]);              // ids array
-
-  /* filter + sort result */
-  const data = useMemo(() => {
-    let out = rows;
-    if (query)
-      out = out.filter(r =>
-        JSON.stringify(r).toLowerCase().includes(query.toLowerCase()));
-    if (sortKey)
-      out = [...out].sort((a, b) =>
-        asc ? a[sortKey] > b[sortKey] ? 1 : -1
-            : a[sortKey] < b[sortKey] ? 1 : -1);
-    return out;
-  }, [rows, query, sortKey, asc]);
-
-  /* bulk export */
-  const exportCSV = () => {
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(
-      data.map(r => Object.fromEntries(columns.map(c => [c.label, r[c.key]])))
+  const toggleAll = (ck) => setSelected(ck ? rows.map((r) => r.id) : []);
+  const toggleOne = (id) =>
+    setSelected((old) =>
+      old.includes(id) ? old.filter((x) => x !== id) : [...old, id]
     );
-    XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
-    XLSX.writeFile(wb, "export.xlsx");
+
+  /* ─── filter + sort ─── */
+  const filtered = rows.filter((r) =>
+    showSearch && q ? JSON.stringify(r).toLowerCase().includes(q) : true
+  );
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortKey) return 0;
+    const A = a[sortKey] ?? "";
+    const B = b[sortKey] ?? "";
+    if (A === B) return 0;
+    return (A > B ? 1 : -1) * (sortDir === "asc" ? 1 : -1);
+  });
+
+  /* ─── csv ─── */
+  const exportCSV = () => {
+    const csv =
+      columns.map((c) => `"${c.label}"`).join(",") +
+      "\n" +
+      rows
+        .map((r) =>
+          columns.map((c) => `"${(r[c.key] ?? "").toString()}"`).join(",")
+        )
+        .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    Object.assign(document.createElement("a"), {
+      href: url,
+      download: "export.csv",
+    }).click();
+    URL.revokeObjectURL(url);
   };
 
-  const toggleSel = id =>
-    setSel(s => s.includes(id) ? s.filter(i => i !== id) : [...s, id]);
-
-  /* UI */
+  /* ─── UI ─── */
   return (
-    <>
-      {/* toolbar */}
-      <div className="flex items-center justify-between mb-2">
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search…"
-          className="border px-2 py-1 rounded text-sm"
-        />
+    <div className="space-y-2">
+      {/* header strip */}
+      <div className="flex flex-wrap items-center gap-3">
+        {showSearch && (
+          <input
+            className="datatable-search flex-1 min-w-[180px] max-w-xs
+                       px-3 py-2 border border-gray-300 rounded-md
+                       focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Search..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        )}
 
-        <div className="space-x-2">
+        {/* actions pushed right */}
+        <div className="flex gap-2 ml-auto">
+          {onBulkDelete && (
+            <button
+              disabled={selected.length === 0}
+              onClick={() =>
+                onBulkDelete(selected).then(() => setSelected([]))
+              }
+              className={`${
+                selected.length
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-gray-400 cursor-not-allowed"
+              } text-white px-4 py-2 rounded-md`}
+            >
+              Delete ({selected.length})
+            </button>
+          )}
+
           <button
-            disabled={!sel.length}
-            onClick={() => onBulkDelete(sel)}
-            className={`px-3 py-1 rounded text-sm 
-                        ${sel.length ? "bg-red-600 text-white" : "bg-gray-300 text-gray-500"}`}>
-            Delete&nbsp;({sel.length})
-          </button>
-          <button onClick={exportCSV}
-                  className="px-3 py-1 bg-green-600 text-white rounded text-sm">
-            Export&nbsp;CSV
+            onClick={exportCSV}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md"
+          >
+            Export CSV
           </button>
         </div>
       </div>
 
       {/* table */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border rounded-xl text-sm">
-          <thead className="bg-gray-100">
+      <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <table className="min-w-full text-sm">
+          <thead className="bg-gray-100 text-gray-700">
             <tr>
-              <th className="px-3"><input type="checkbox"
-                    checked={sel.length === data.length && data.length}
-                    onChange={e => setSel(e.target.checked ? data.map(r=>r.id) : [])}/></th>
-              {columns.map(col => (
-                <th key={col.key}
-                    className="px-3 py-2 text-left cursor-pointer select-none"
-                    onClick={() => { setAsc(sortKey === col.key ? !asc : true); setSortKey(col.key);} }>
-                  {col.label}{sortKey===col.key && (asc? " ▲":" ▼")}
+              {onBulkDelete && (
+                <th className="px-3 py-2 text-left align-middle">
+                  <input
+                    type="checkbox"
+                    checked={selected.length === rows.length && rows.length > 0}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                  />
+                </th>
+              )}
+              {columns.map((c) => (
+                <th
+                  key={c.key}
+                  style={{ width: c.width }}
+                  className="px-3 py-2 text-left align-middle cursor-pointer select-none"
+                  onClick={() => {
+                    if (sortKey === c.key) {
+                      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+                    } else {
+                      setSortKey(c.key);
+                      setSortDir("asc");
+                    }
+                  }}
+                >
+                  {c.label}
+                  {sortKey === c.key && (sortDir === "asc" ? " ↑" : " ↓")}
                 </th>
               ))}
-              <th className="px-3 py-2"></th>
             </tr>
           </thead>
+
           <tbody>
-            {data.map(r => (
-              <tr key={r.id} className={r.__rowClass || ""}>
-                <td className="px-3"><input type="checkbox"
-                      checked={sel.includes(r.id)} onChange={()=>toggleSel(r.id)}/></td>
-                {columns.map(col => (
-                  <td key={col.key} className="px-3 py-2">
-                    {col.render ? col.render(r) : r[col.key]}
+            {sorted.map((r) => (
+              <tr
+                key={r.id}
+                className="odd:bg-white even:bg-gray-50 text-gray-800"
+              >
+                {onBulkDelete && (
+                  <td className="px-3 py-2 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(r.id)}
+                      onChange={() => toggleOne(r.id)}
+                    />
+                  </td>
+                )}
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className="px-3 py-2 align-middle whitespace-nowrap"
+                  >
+                    {r[c.key]}
                   </td>
                 ))}
-                {/* caller can inject Edit/Delete buttons via render */}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }
 

@@ -3,51 +3,114 @@
 <head>
     <title>Inventory Report</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        th { background: #f2f2f2; text-align: left; }
+        @page {
+            size: A4;
+            margin: 15mm 10mm 15mm 10mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            width: 100%;
+            height: 100%;
+        }
+        .page {
+            width: 190mm;
+            min-height: 277mm;
+            margin: 0 auto;
+            padding: 10mm;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 10px;
+            page-break-inside: avoid;
+        }
+        th, td {
+            padding: 6px 5px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+        th {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.5px;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .right {
+            text-align: right;
+        }
+        .footer {
+            text-align: center;
+            font-size: 10px;
+            color: #7f8c8d;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        @media print {
+            body {
+                background: none;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .page {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                padding: 0;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Inventory Report</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Item Name</th>
-                <th>Category</th>
-                <th>Quantity</th>
-                <th>Custodian</th>
-                <th>Assigned To</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in items %}
-            <tr>
-                <td>{{ item.name }}</td>
-                <td>{{ item.category }}</td>
-                <td>{{ item.quantity }}</td>
-
-                <td>
-                    {% if item.staff_custodian %}
-                        {{ item.staff_custodian.full_name }}
-                    {% else %}
-                        N/A
-                    {% endif %}
-                </td>
-
-                <td>
-                    {% if item.assigned_to_student %}
-                        {{ item.assigned_to_student.first_name }} {{ item.assigned_to_student.last_name }}
-                    {% else %}
-                        N/A
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="page">
+        <h1>Inventory Report</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Category</th>
+                    <th>Quantity</th>
+                    <th>Unit Price</th>
+                    <th>Last Restock</th>
+                    <th>Staff Custodian</th>
+                    <th>Assigned to Student</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.name }}</td>
+                    <td>{{ item.category }}</td>
+                    <td class="right">{{ item.quantity }}</td>
+                    <td class="right">{{ item.unit_price|floatformat:2 }}</td>
+                    <td>{{ item.last_restock|date:"m/d/Y" }}</td>
+                    <td>{% if item.custodian %}{{ item.custodian }}{% else %}N/A{% endif %}</td>
+                    <td>{% if item.student %}{{ item.student }}{% else %}N/A{% endif %}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="footer">
+            Generated on {{ now|date:"Y-m-d H:i" }}
+        </div>
+    </div>
 </body>
 </html>
-

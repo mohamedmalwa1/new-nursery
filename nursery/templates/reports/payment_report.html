@@ -4,14 +4,21 @@
     <title>Payments Report</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        th { background: #f2f2f2; text-align: left; }
+        h1 { color: #222; text-align: center; margin-bottom: 10px; }
+        .meta { text-align: center; color: #444; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #aaa; padding: 8px; text-align: left; }
+        th { background: #efefef; }
+        tfoot td { font-weight: bold; background: #fafafa; }
+        .summary { margin-top: 40px; border: 1px solid #ccc; padding: 16px; width: 40%; }
+        .summary-title { font-size: 1.1em; font-weight: bold; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <h1>Payments Report</h1>
+    <h1>PAYMENTS REPORT</h1>
+    <div class="meta">
+        <span>Generated on: {{ now|date:"F j, Y, H:i" }}</span>
+    </div>
     <table>
         <thead>
             <tr>
@@ -20,19 +27,39 @@
                 <th>Amount</th>
                 <th>Payment Date</th>
                 <th>Method</th>
+                <th>Status</th>
             </tr>
         </thead>
         <tbody>
             {% for payment in payments %}
             <tr>
-                <td>{{ payment.invoice.student.first_name }} {{ payment.invoice.student.last_name }}</td>
-                <td>{{ payment.invoice.invoice_number }}</td>
+                <td>
+                    {{ payment.invoice.student.first_name }} {{ payment.invoice.student.last_name }}
+                </td>
+                <td>
+                    {{ payment.invoice.invoice_number|default:payment.invoice.id }}
+                </td>
                 <td>{{ payment.amount }}</td>
-                <td>{{ payment.payment_date }}</td>
-                <td>{{ payment.payment_method }}</td>
+                <td>{{ payment.payment_date|date:"F j, Y" }}</td>
+                <td>{{ payment.method }}</td>
+                <td>{{ payment.invoice.status }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="2">TOTAL</td>
+                <td colspan="4">{{ payments|length }}</td>
+            </tr>
+        </tfoot>
     </table>
+    <div class="summary">
+        <div class="summary-title">Summary</div>
+        <div>Total Payments: {{ payments|length }}</div>
+        <div>Paid Invoices: {{ paid_invoices_count }}</div>
+        <div>Unpaid Invoices: {{ unpaid_invoices_count }}</div>
+        <div>Total Amount: {{ total_amount }}</div>
+    </div>
 </body>
 </html>
+

@@ -1,36 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <title>Attendance Report</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 30px; }
-        h1 { color: #333; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; }
-        th { background: #f2f2f2; text-align: left; }
+        /* ... (keep your existing styles) ... */
+        
+        /* Add these new styles for action buttons */
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .action-bar button {
+            padding: 6px 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .action-bar button:hover {
+            background: #2980b9;
+        }
+        .action-links {
+            display: flex;
+            gap: 5px;
+        }
+        .action-links a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        @media print {
+            .action-bar {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>Attendance Report</h1>
-    <table>
-        <thead>
-            <tr>
-                <th>Student</th>
-                <th>Date</th>
-                <th>Status</th>
-                <th>Recorded By</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for record in records %}
-            <tr>
-                <td>{{ record.student.first_name }} {{ record.student.last_name }}</td>
-                <td>{{ record.date }}</td>
-                <td>{{ record.status }}</td>
-                <td>{{ record.staff.full_name }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="page">
+        <!-- Header Section (keep existing) -->
+        <div class="header">
+            <!-- ... existing header content ... -->
+        </div>
+
+        <!-- NEW: Add the action buttons bar from your image -->
+        <div class="action-bar">
+            <button onclick="window.print()">Print</button>
+            <button>+ Add Entry</button>
+            <button onclick="window.location.href='{% url 'student_attendance_pdf' %}'">Student PDF</button>
+            <button onclick="window.location.href='{% url 'staff_attendance_pdf' %}'">Staff PDF</button>
+            <button>Export CSV</button>
+        </div>
+
+        <!-- Student Attendance Table (modified to match image) -->
+        <h2>Student Attendance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Status</th>
+                    <th>In</th>
+                    <th>Out</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in records %}
+                <tr>
+                    <td>{{ rec.student.full_name }}</td>
+                    <td class="status-{{ rec.status|lower }}">{{ rec.status }}</td>
+                    <td>{{ rec.check_in|default:"-" }}</td>
+                    <td>{{ rec.check_out|default:"-" }}</td>
+                    <td class="action-links">
+                        <a href="{% url 'edit_attendance' rec.id %}">Edit</a>
+                        <a href="{% url 'delete_attendance' rec.id %}">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Staff Attendance Table (modified to match image) -->
+        <h2>Staff Attendance</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Staff</th>
+                    <th>Status</th>
+                    <th>In</th>
+                    <th>Out</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in records %}
+                {% if rec.staff %}
+                <tr>
+                    <td>{{ rec.staff.full_name }}</td>
+                    <td class="status-{{ rec.status|lower }}">{{ rec.status }}</td>
+                    <td>{{ rec.check_in|default:"-" }}</td>
+                    <td>{{ rec.check_out|default:"-" }}</td>
+                    <td class="action-links">
+                        <a href="{% url 'edit_attendance' rec.id %}">Edit</a>
+                        <a href="{% url 'delete_attendance' rec.id %}">Delete</a>
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Footer (keep existing) -->
+        <div class="footer">
+            Generated on {{ now|date:"Y-m-d H:i" }}
+        </div>
+    </div>
 </body>
 </html>

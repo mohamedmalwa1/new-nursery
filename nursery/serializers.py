@@ -18,12 +18,16 @@ class StaffSerializer(serializers.ModelSerializer):
             'is_active', 'document'
         ]
 
+
 # ---------------------- STUDENT ----------------------
 class StudentSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
-    age = serializers.IntegerField(read_only=True)
+    age = serializers.SerializerMethodField()
     classroom_name = serializers.CharField(source='classroom.name', read_only=True)
     teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
+
+    def get_age(self, obj):
+        return obj.age
 
     class Meta:
         model = Student
@@ -39,11 +43,13 @@ class StudentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
 
+
 # ---------------------- CLASSROOM ----------------------
 class ClassroomSerializer(serializers.ModelSerializer):
     class Meta:
         model = Classroom
         fields = '__all__'
+
 
 # ---------------------- ATTENDANCE ----------------------
 class AttendanceSerializer(serializers.ModelSerializer):
@@ -58,6 +64,7 @@ class AttendanceSerializer(serializers.ModelSerializer):
             'staff', 'staff_name'
         ]
 
+
 # ---------------------- MEDICAL RECORD ----------------------
 class MedicalRecordSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.full_name', read_only=True)
@@ -68,6 +75,7 @@ class MedicalRecordSerializer(serializers.ModelSerializer):
             'id', 'student', 'student_name',
             'record_type', 'date', 'description', 'attachment', 'resolved'
         ]
+
 
 # ---------------------- INVOICE ----------------------
 class InvoiceSerializer(serializers.ModelSerializer):
@@ -82,6 +90,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'days_remaining', 'taxed_amount'
         ]
 
+
 # ---------------------- PAYMENT ----------------------
 class PaymentSerializer(serializers.ModelSerializer):
     invoice_id = serializers.IntegerField(source='invoice.id', read_only=True)
@@ -94,18 +103,38 @@ class PaymentSerializer(serializers.ModelSerializer):
             'amount', 'payment_date', 'method', 'transaction_id'
         ]
 
+
 # ---------------------- INVENTORY ----------------------
 class InventoryItemSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='staff_custodian.full_name', read_only=True)
     student_name = serializers.CharField(source='assigned_to_student.full_name', read_only=True)
 
+    remaining_quantity = serializers.SerializerMethodField()
+    total_value = serializers.SerializerMethodField()
+
     class Meta:
         model = InventoryItem
         fields = [
-            'id', 'name', 'category', 'quantity', 'unit_price',
-            'last_restock', 'staff_custodian', 'staff_name',
-            'assigned_to_student', 'student_name'
+            'id',
+            'name',
+            'category',
+            'quantity',
+            'remaining_quantity',
+            'unit_price',
+            'total_value',
+            'last_restock',
+            'staff_custodian',
+            'staff_name',
+            'assigned_to_student',
+            'student_name'
         ]
+
+    def get_remaining_quantity(self, obj):
+        return obj.remaining_quantity
+
+    def get_total_value(self, obj):
+        return obj.total_value
+
 
 # ---------------------- STUDENT DOCUMENT ----------------------
 class StudentDocumentSerializer(serializers.ModelSerializer):
@@ -118,6 +147,7 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
             'doc_type', 'file', 'issue_date', 'expiration_date', 'is_expired'
         ]
 
+
 # ---------------------- PAYROLL CONTRACT ----------------------
 class PayrollContractSerializer(serializers.ModelSerializer):
     staff_name = serializers.CharField(source='staff.full_name', read_only=True)
@@ -129,6 +159,7 @@ class PayrollContractSerializer(serializers.ModelSerializer):
             'base_salary', 'allowance', 'tax_percentage', 'max_advance',
             'contract_start', 'contract_end'
         ]
+
 
 # ---------------------- SALARY RECORD ----------------------
 class SalaryRecordSerializer(serializers.ModelSerializer):

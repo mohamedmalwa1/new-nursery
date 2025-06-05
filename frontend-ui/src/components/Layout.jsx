@@ -1,18 +1,28 @@
+// src/components/Layout.jsx
 import React from "react";
-import Sidebar from "./Sidebar";
-import Topbar from "./Topbar";
 import { Outlet } from "react-router-dom";
+import Sidebar from "./Sidebar";
+import Topbar  from "./Topbar";
 
 export default function Layout() {
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-800">
+      {/* sidebar */}
       <Sidebar />
+
+      {/* right-hand column (topbar + page content) */}
       <div className="flex flex-col flex-1">
         <Topbar />
-        <main className="p-6 flex-1 overflow-y-auto bg-white rounded-t-xl shadow-inner">
-          <Outlet />
-        </main>
+
+        {/* page wrapper → provides outer padding */}
+        <div className="page flex-1 overflow-y-auto">
+          {/* card wrapper → white rounded panel */}
+          <div className="card">
+            <Outlet />   {/* ← your Students / Staff / … component */}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
