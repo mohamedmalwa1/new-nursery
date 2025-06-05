@@ -91,7 +91,7 @@ class Staff(models.Model):
         ('TEACHER', 'Teacher'),
         ('ASSISTANT', 'Assistant'),
         ('ADMIN', 'Administrator'),
-        ('SUPPORT', 'Support Staff')
+        ('Nurse', 'Medical')
     ]
 
     first_name = models.CharField(max_length=50)
@@ -286,8 +286,8 @@ class StudentDocument(models.Model):
     DOC_TYPES = [
         ('BIRTH_CERT', 'Birth Certificate'),
         ('MEDICAL', 'Medical Record'),
-        ('CONSENT', 'Consent Form'),
-        ('OTHER', 'Other')
+        ('ID', 'ID'),
+        ('passport', 'passport')
     ]
 
     student = models.ForeignKey(

@@ -5,8 +5,8 @@ import toast from "react-hot-toast";
 const TYPES = [
   ["BIRTH_CERT", "Birth Certificate"],
   ["MEDICAL",    "Medical Record"],
-  ["CONSENT",    "Consent Form"],
-  ["OTHER",      "Other"],
+  ["ID",    "ID"],
+  ["passport",      "passport"],
 ];
 
 export default function DocumentForm({ initial, onSaved, onCancel }) {

@@ -151,7 +151,7 @@ export default function StaffForm({ initial, onSaved, onCancel }) {
               <option value="TEACHER">Teacher</option>
               <option value="ASSISTANT">Assistant</option>
               <option value="ADMIN">Administrator</option>
-              <option value="SUPPORT">Support Staff</option>
+              <option value="Medical">Medical</option>
             </select>
             {errors.role && <p className="text-red-500 text-sm mt-1">{errors.role}</p>}
           </div>
